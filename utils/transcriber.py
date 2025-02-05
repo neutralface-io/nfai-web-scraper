@@ -58,17 +58,20 @@ class AudioTranscriber:
                 capture_output=True
             )
             
-            # Clean up temporary file
-            concat_list.unlink()
+            if not process.stdout:
+                raise ValueError("FFmpeg produced no output")
             
-            # Clean up input segments
+            logger.info(f"Combined audio size: {len(process.stdout) / (1024*1024):.2f} MB")
+            
+            # Clean up
+            concat_list.unlink()
             for path in segment_paths:
                 path.unlink()
             
             return process.stdout
             
         except subprocess.CalledProcessError as e:
-            logger.error(f"FFmpeg error combining segments: {e.stderr.decode()}")
+            logger.error(f"FFmpeg error: {e.stderr.decode()}")
             raise
         except Exception as e:
             logger.error(f"Error combining audio segments: {str(e)}")

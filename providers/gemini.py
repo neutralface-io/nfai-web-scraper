@@ -99,15 +99,26 @@ class GeminiProvider:
             # Convert bytes to file-like object
             audio_file = BytesIO(audio_data)
             audio_file.name = "audio.wav"  # Required for mime-type detection
-            return genai.upload_file(audio_file, mime_type="audio/wav")
+            
+            # Log upload attempt
+            logger.info(f"Attempting to upload audio data (attempt {retry_count + 1}/{self.max_retries + 1})")
+            
+            try:
+                result = genai.upload_file(audio_file, mime_type="audio/wav")
+                logger.info("Audio upload successful")
+                return result
+            except Exception as e:
+                logger.error(f"Upload error: {str(e)}")
+                if retry_count < self.max_retries:
+                    wait_time = 2 ** retry_count
+                    logger.warning(f"Retrying upload in {wait_time} seconds...")
+                    time.sleep(wait_time)  # Exponential backoff
+                    return self._upload_bytes(audio_data, retry_count + 1)
+            raise
+            
         except Exception as e:
-            if retry_count < self.max_retries:
-                logger.warning(f"Retry {retry_count + 1} for audio upload")
-                time.sleep(2 ** retry_count)  # Exponential backoff
-                return self._upload_bytes(audio_data, retry_count + 1)
-            else:
-                logger.error(f"Failed to upload audio data after {self.max_retries} attempts: {str(e)}")
-                return None
+            logger.error(f"Failed to upload audio data: {str(e)}")
+            return None
     
     def transcribe_bytes(self, audio_data: bytes, prompt: str) -> Optional[str]:
         """
@@ -121,6 +132,9 @@ class GeminiProvider:
             str: Transcribed text or None on failure
         """
         try:
+            # Log audio data size
+            logger.info(f"Processing audio data of size: {len(audio_data) / (1024*1024):.2f} MB")
+            
             # Upload audio data
             file = self._upload_bytes(audio_data)
             if not file:
@@ -138,10 +152,16 @@ class GeminiProvider:
                 "Ensure accurate speaker identification and timestamp precision."
             )
             
+            if not response or not response.text:
+                raise ValueError("Empty response from Gemini")
+            
+            logger.info("Successfully received transcription from Gemini")
             return response.text
             
         except Exception as e:
             logger.error(f"Transcription failed: {str(e)}")
+            if hasattr(e, 'response'):
+                logger.error(f"Response details: {e.response.text if hasattr(e.response, 'text') else 'No response text'}")
             return None
     
     @property

@@ -44,11 +44,11 @@ class JsonFormatter(BaseFormatter):
             "For each speech segment, provide timestamp, speaker name, and transcription. "
             "Timestamps must be in HH:MM:SS.mmm format (e.g., 00:01:23.456). "
             "Hours, minutes, and seconds should increment properly (e.g., 01:00:00.000 for 1 hour). "
-            "Format as: timestamp | speaker | transcription\n"
+            "Format as: timestamp;speaker;transcription\n"
             "Example format:\n"
-            "00:00:00.000 | Speaker 1 | Hello everyone\n"
-            "00:00:02.500 | Speaker 2 | Hi there\n"
-            "01:30:45.100 | Speaker 1 | Let's continue"
+            "00:00:00.000;Speaker 1;Hello everyone\n"
+            "00:00:02.500;Speaker 2;Hi there\n"
+            "01:30:45.100;Speaker 1;Let's continue"
         )
     
     def format_output(self, text: str) -> str:

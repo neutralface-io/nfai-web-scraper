@@ -21,8 +21,6 @@ def parse_arguments():
     parser.add_argument('--url', type=str, required=True, help='URL of the video to process')
     parser.add_argument('--output_dir', type=str, default='output', help='Output directory for processed files')
     parser.add_argument('--format', type=str, default='txt', choices=['json', 'txt'], help='Output format')
-    parser.add_argument('--time_unit', type=str, default='ms', choices=['ms', 's', 'min'], 
-                       help='Time unit for timestamps (default: milliseconds)')
     parser.add_argument('--segment_duration', type=int, default=5, help='Duration of each segment in minutes')
     parser.add_argument('--max_concurrent', type=int, default=4, help='Maximum number of concurrent downloads')
     parser.add_argument('--api_key', type=str, help='Gemini API key (or set GEMINI_API_KEY env var)')
@@ -54,8 +52,7 @@ def main():
         # Transcribe and diarize with specified format
         transcriber = GeminiTranscriber(
             api_key=api_key,
-            output_format=args.format,
-            time_unit=args.time_unit
+            output_format=args.format
         )
         logger.info(f"Starting transcription and diarization in {args.format} format")
         transcription_path = transcriber.transcribe(segment_paths, output_dir)

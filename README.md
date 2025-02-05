@@ -100,102 +100,20 @@ python process_video.py \
 ## Output Formats
 
 ### Text Format (Default)
-Semicolon-delimited format with configurable timestamps:
-
-**Milliseconds (default)**:
+Semicolon-delimited format with nanosecond precision timestamps:
 ```
 0;Speaker 1;Hello, welcome to the video.
-3500;Speaker 2;Thanks for having me here.
-7200;Speaker 1;Let's discuss the topic.
-```
-
-**Seconds**:
-```
-0.0;Speaker 1;Hello, welcome to the video.
-3.5;Speaker 2;Thanks for having me here.
-7.2;Speaker 1;Let's discuss the topic.
-```
-
-**Minutes**:
-```
-0.000;Speaker 1;Hello, welcome to the video.
-0.058;Speaker 2;Thanks for having me here.
-0.120;Speaker 1;Let's discuss the topic.
+3500000000;Speaker 2;Thanks for having me here.
+7200000000;Speaker 1;Let's discuss the topic.
 ```
 
 ### JSON Format
-Structured format with configurable timestamps:
-
-**Milliseconds (default)**:
+Compact JSON format with nanosecond precision:
 ```json
-{
-  "segments": [
-    {
-      "timestamp_ms": 0,
-      "speaker": "Speaker 1",
-      "transcription": "Hello, welcome to the video."
-    },
-    {
-      "timestamp_ms": 3500,
-      "speaker": "Speaker 2",
-      "transcription": "Thanks for having me here."
-    }
-  ]
-}
+{"segments":[{"ns":0,"speaker":"Speaker 1","transcription":"Hello, welcome to the video."},{"ns":3500000000,"speaker":"Speaker 2","transcription":"Thanks for having me here."}]}
 ```
 
-**Seconds**:
-```json
-{
-  "segments": [
-    {
-      "timestamp_s": 0.0,
-      "speaker": "Speaker 1",
-      "transcription": "Hello, welcome to the video."
-    },
-    {
-      "timestamp_s": 3.5,
-      "speaker": "Speaker 2",
-      "transcription": "Thanks for having me here."
-    }
-  ]
-}
-```
-
-**Minutes**:
-```json
-{
-  "segments": [
-    {
-      "timestamp_min": 0.000,
-      "speaker": "Speaker 1",
-      "transcription": "Hello, welcome to the video."
-    },
-    {
-      "timestamp_min": 0.058,
-      "speaker": "Speaker 2",
-      "transcription": "Thanks for having me here."
-    }
-  ]
-}
-```
-
-### Example Usage with Time Units
-
-Basic usage with milliseconds (default):
-```bash
-python process_video.py --url "https://youtube.com/watch?v=example"
-```
-
-Using seconds for timestamps:
-```bash
-python process_video.py --url "https://youtube.com/watch?v=example" --time_unit s
-```
-
-JSON format with minutes:
-```bash
-python process_video.py --url "https://youtube.com/watch?v=example" --format json --time_unit min
-```
+Note: Timestamps are stored as 64-bit integers representing nanoseconds (1 second = 1,000,000,000 nanoseconds) for maximum precision and minimal storage.
 
 ## Supported URLs
 

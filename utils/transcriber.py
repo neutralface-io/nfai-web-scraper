@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class GeminiTranscriber:
     """Handles audio transcription and diarization using Gemini API"""
     
-    def __init__(self, api_key: str, max_retries: int = 3, output_format: str = 'txt', time_unit: str = 'ms'):
+    def __init__(self, api_key: str, max_retries: int = 3, output_format: str = 'txt'):
         """
         Initialize Gemini transcriber
         
@@ -20,10 +20,9 @@ class GeminiTranscriber:
             api_key (str): Gemini API key
             max_retries (int): Maximum number of retry attempts
             output_format (str): Output format (txt or json)
-            time_unit (str): Time unit for timestamps (ms, s, or min)
         """
         self.max_retries = max_retries
-        self.formatter = get_formatter(output_format, time_unit)
+        self.formatter = get_formatter(output_format)
         
         # Configure Gemini
         genai.configure(api_key=api_key)

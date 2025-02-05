@@ -1,7 +1,17 @@
-yt-dlp>=2023.12.30
-ffmpeg-python>=0.2.0
-numpy>=1.24.0
-pathlib>=1.0.1
-typing-extensions>=4.8.0
-requests>=2.31.0
-concurrent-log-handler>=0.9.24
+# Core dependencies
+yt-dlp>=2023.12.30        # Video downloading
+ffmpeg-python>=0.2.0      # Audio processing
+numpy>=1.24.0             # Numerical operations
+
+# AI/ML dependencies
+google-generativeai>=0.3.0  # Gemini API
+pillow>=10.0.0             # Image handling for Gemini
+
+# Utility packages
+pathlib>=1.0.1             # Path manipulation
+typing-extensions>=4.8.0    # Type hints
+requests>=2.31.0           # HTTP requests
+concurrent-log-handler>=0.9.24  # Thread-safe logging
+
+# Optional dependencies
+tqdm>=4.66.1              # Progress bars (optional)

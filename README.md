@@ -13,20 +13,22 @@ A Python-based CLI tool that processes videos from various social media platform
   - Parallel segment downloading
   - Speech-optimized audio format (48kHz, mono, 16-bit PCM)
   - Configurable segment duration
-  - Efficient resource usage
+  - Memory-efficient processing
+  - Automatic cleanup of temporary files
 
 - **AI-Powered Transcription**:
   - Speaker diarization using Gemini AI
   - Automatic speaker identification
-  - Multiple output formats (TXT, JSON)
-  - Timestamp precision
+  - High-precision timestamps (HH:MM:SS.mmm)
+  - Multiple output formats
   - Context-aware processing
 
-- **Smart Download Management**:
+- **Smart Resource Management**:
   - Automatic platform detection
   - Configurable concurrent downloads
-  - Progress tracking per segment
-  - Robust error handling
+  - Progress tracking
+  - Robust error handling and retries
+  - Memory-optimized audio handling
 
 ## Prerequisites
 
@@ -69,14 +71,14 @@ export GEMINI_API_KEY="your-api-key"
 
 ### Basic Usage
 
-Download and transcribe a video with default settings (TXT format):
+Process a video with default settings (TXT format):
 ```bash
 python process_video.py --url "https://youtube.com/watch?v=example"
 ```
 
 ### Advanced Usage
 
-Configure segment duration, parallel processing, and output format:
+Configure segment duration and parallel processing:
 ```bash
 python process_video.py \
     --url "https://www.twitch.tv/videos/12345678" \
@@ -92,7 +94,6 @@ python process_video.py \
 - `--url`: Video URL (required)
 - `--output_dir`: Output directory (default: "output")
 - `--format`: Output format (json/txt, default: txt)
-- `--time_unit`: Time unit for timestamps (ms/s/min, default: ms)
 - `--segment_duration`: Duration of each segment in minutes (default: 5)
 - `--max_concurrent`: Maximum number of concurrent downloads (default: 4)
 - `--api_key`: Gemini API key (optional if set via environment variable)
@@ -100,7 +101,7 @@ python process_video.py \
 ## Output Formats
 
 ### Text Format (Default)
-Semicolon-delimited format with precise timestamps (HH:MM:SS.mmm):
+Semicolon-delimited format with precise timestamps:
 ```
 00:00:00.000;Speaker 1;Hello, welcome to the video.
 00:00:03.450;Speaker 2;Thanks for having me here.
@@ -108,14 +109,46 @@ Semicolon-delimited format with precise timestamps (HH:MM:SS.mmm):
 ```
 
 ### JSON Format
-Compact JSON format with precise timestamps:
+Structured format with precise timestamps:
 ```json
-{"segments":[{"timestamp":"00:00:00.000","speaker":"Speaker 1","transcription":"Hello, welcome to the video."},{"timestamp":"00:00:03.450","speaker":"Speaker 2","transcription":"Thanks for having me here."}]}
+{
+  "segments": [
+    {
+      "timestamp": "00:00:00.000",
+      "speaker": "Speaker 1",
+      "transcription": "Hello, welcome to the video."
+    },
+    {
+      "timestamp": "00:00:03.450",
+      "speaker": "Speaker 2",
+      "transcription": "Thanks for having me here."
+    }
+  ]
+}
 ```
-
-Note: Timestamps represent the exact elapsed time in the audio when each segment starts, in HH:MM:SS.mmm format (hours:minutes:seconds.milliseconds).
 
 ## Supported URLs
 
 ### YouTube
-- Regular videos: `
+- Regular videos: `https://youtube.com/watch?v=VIDEO_ID`
+- Short URLs: `https://youtu.be/VIDEO_ID`
+- Playlist items: `https://youtube.com/playlist?list=PLAYLIST_ID`
+
+### Twitch
+- VODs: `https://www.twitch.tv/videos/VOD_ID`
+- Clips: `https://clips.twitch.tv/CLIP_ID`
+
+## Output Files
+
+Files are saved using the video's unique identifier:
+- Text format: `{video_id}.txt`
+- JSON format: `{video_id}.json`
+
+## Error Handling
+
+The tool includes robust error handling:
+- Automatic retries for failed downloads
+- Exponential backoff for API requests
+- Detailed error logging
+- Cleanup of temporary files
+- Memory-efficient processing

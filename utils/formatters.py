@@ -5,6 +5,19 @@ import json
 class BaseFormatter(ABC):
     """Base class for output formatters"""
     
+    def _format_timestamp(self, seconds: float) -> str:
+        """
+        Convert seconds to HH:MM:SS.mmm format
+        Handles elapsed time in a video/audio context
+        """
+        total_ms = int(float(seconds) * 1000)
+        hours = total_ms // 3600000
+        minutes = (total_ms % 3600000) // 60000
+        seconds = (total_ms % 60000) // 1000
+        ms = total_ms % 1000
+        
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{ms:03d}"
+    
     @abstractmethod
     def get_prompt(self) -> str:
         """Get format-specific Gemini prompt"""
@@ -16,41 +29,40 @@ class BaseFormatter(ABC):
         pass
 
 class TextFormatter(BaseFormatter):
-    """Format output as semicolon-delimited text with nanosecond timestamps"""
+    """Format output as semicolon-delimited text with HH:MM:SS.mmm timestamps"""
     
     def get_prompt(self) -> str:
         return (
             "Generate audio diarization with transcriptions and speaker information. "
-            "Include timestamps in seconds with up to 9 decimal places. "
+            "Include precise timestamps in seconds (with decimals for milliseconds). "
             "Format each line as: <timestamp>;<speaker_name>;<transcription> "
             "Output should be compact with no blank lines between entries. "
-            "Each entry should be on a new line without extra spacing."
+            "Each entry should be on a new line without extra spacing. "
+            "Timestamps should reflect the exact time in the audio when each segment starts."
         )
     
     def format_output(self, text: str) -> str:
-        # Convert seconds to nanoseconds and format as integer
         formatted_lines = []
         for line in text.splitlines():
             if not line.strip():
                 continue
             try:
                 timestamp, speaker, transcription = [x.strip() for x in line.split(';', 2)]
-                # Convert to nanoseconds (1 second = 1_000_000_000 nanoseconds)
-                ns = int(float(timestamp) * 1_000_000_000)
-                formatted_lines.append(f"{ns};{speaker};{transcription}")
+                time_str = self._format_timestamp(timestamp)
+                formatted_lines.append(f"{time_str};{speaker};{transcription}")
             except (ValueError, IndexError):
                 continue
         return '\n'.join(formatted_lines)
 
 class JsonFormatter(BaseFormatter):
-    """Format output as structured JSON with nanosecond timestamps"""
+    """Format output as structured JSON with HH:MM:SS.mmm timestamps"""
     
     def get_prompt(self) -> str:
         return (
             "Generate audio diarization with transcriptions and speaker information. "
-            "Include timestamps in seconds with up to 9 decimal places. "
+            "Include precise timestamps in seconds (with decimals for milliseconds). "
             "For each speech segment, provide: "
-            "- timestamp in seconds "
+            "- exact timestamp when the segment starts in the audio "
             "- speaker name (inferred from audio) "
             "- transcription text "
             "Format as a simple list with each entry on a new line: "
@@ -64,10 +76,9 @@ class JsonFormatter(BaseFormatter):
                 continue
             try:
                 timestamp, speaker, transcription = [x.strip() for x in line.split('|', 2)]
-                # Convert to nanoseconds
-                ns = int(float(timestamp) * 1_000_000_000)
+                time_str = self._format_timestamp(timestamp)
                 entries.append({
-                    'timestamp': ns,  # Using 'ns' for compact key name
+                    'timestamp': time_str,
                     'speaker': speaker,
                     'transcription': transcription
                 })

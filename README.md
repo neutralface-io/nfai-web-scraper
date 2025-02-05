@@ -100,20 +100,20 @@ python process_video.py \
 ## Output Formats
 
 ### Text Format (Default)
-Semicolon-delimited format with nanosecond precision timestamps:
+Semicolon-delimited format with precise timestamps (HH:MM:SS.mmm):
 ```
-0;Speaker 1;Hello, welcome to the video.
-3500000000;Speaker 2;Thanks for having me here.
-7200000000;Speaker 1;Let's discuss the topic.
+00:00:00.000;Speaker 1;Hello, welcome to the video.
+00:00:03.450;Speaker 2;Thanks for having me here.
+00:00:07.200;Speaker 1;Let's discuss the topic.
 ```
 
 ### JSON Format
-Compact JSON format with nanosecond precision:
+Compact JSON format with precise timestamps:
 ```json
-{"segments":[{"ns":0,"speaker":"Speaker 1","transcription":"Hello, welcome to the video."},{"ns":3500000000,"speaker":"Speaker 2","transcription":"Thanks for having me here."}]}
+{"segments":[{"timestamp":"00:00:00.000","speaker":"Speaker 1","transcription":"Hello, welcome to the video."},{"timestamp":"00:00:03.450","speaker":"Speaker 2","transcription":"Thanks for having me here."}]}
 ```
 
-Note: Timestamps are stored as 64-bit integers representing nanoseconds (1 second = 1,000,000,000 nanoseconds) for maximum precision and minimal storage.
+Note: Timestamps represent the exact elapsed time in the audio when each segment starts, in HH:MM:SS.mmm format (hours:minutes:seconds.milliseconds).
 
 ## Supported URLs
 

@@ -9,14 +9,25 @@ class BaseFormatter(ABC):
         """
         Convert seconds to HH:MM:SS.mmm format
         Handles elapsed time in a video/audio context
-        """
-        total_ms = int(float(seconds) * 1000)
-        hours = total_ms // 3600000
-        minutes = (total_ms % 3600000) // 60000
-        seconds = (total_ms % 60000) // 1000
-        ms = total_ms % 1000
         
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{ms:03d}"
+        Args:
+            seconds (float): Time in seconds
+            
+        Returns:
+            str: Formatted timestamp (HH:MM:SS.mmm)
+        """
+        # Convert to total milliseconds first
+        total_ms = int(float(seconds) * 1000)
+        
+        # Calculate each component
+        ms = total_ms % 1000
+        total_seconds = total_ms // 1000
+        
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        secs = total_seconds % 60
+        
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}.{ms:03d}"
     
     @abstractmethod
     def get_prompt(self) -> str:

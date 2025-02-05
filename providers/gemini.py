@@ -3,6 +3,7 @@ import google.generativeai as genai
 from pathlib import Path
 from typing import Dict, Optional
 import time
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,31 @@ class GeminiProvider:
             logger.error(f"Transcription failed for {audio_path}: {str(e)}")
             return None
     
+    def _upload_bytes(self, audio_data: bytes, retry_count: int = 0) -> Optional[Dict]:
+        """
+        Upload bytes data to Gemini with retry logic
+        
+        Args:
+            audio_data (bytes): Audio data in WAV format
+            retry_count (int): Current retry attempt
+            
+        Returns:
+            Dict: Gemini file response or None on failure
+        """
+        try:
+            # Convert bytes to file-like object
+            audio_file = BytesIO(audio_data)
+            audio_file.name = "audio.wav"  # Required for mime-type detection
+            return genai.upload_file(audio_file, mime_type="audio/wav")
+        except Exception as e:
+            if retry_count < self.max_retries:
+                logger.warning(f"Retry {retry_count + 1} for audio upload")
+                time.sleep(2 ** retry_count)  # Exponential backoff
+                return self._upload_bytes(audio_data, retry_count + 1)
+            else:
+                logger.error(f"Failed to upload audio data after {self.max_retries} attempts: {str(e)}")
+                return None
+    
     def transcribe_bytes(self, audio_data: bytes, prompt: str) -> Optional[str]:
         """
         Transcribe audio data using Gemini
@@ -96,7 +122,7 @@ class GeminiProvider:
         """
         try:
             # Upload audio data
-            file = genai.upload_blob(audio_data, mime_type="audio/wav")
+            file = self._upload_bytes(audio_data)
             if not file:
                 raise ValueError("Failed to upload audio data")
             

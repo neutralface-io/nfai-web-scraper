@@ -1,10 +1,12 @@
 import argparse
 from pathlib import Path
 from utils.downloader import VideoDownloader
-from utils.transcriber import GeminiTranscriber
+from utils.transcriber import AudioTranscriber
 import logging
 import os
 import warnings
+from providers.gemini import GeminiProvider
+from utils.url_parser import extract_video_id
 
 # Suppress gRPC warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -29,6 +31,10 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     
+    # Get video ID from URL
+    video_id = extract_video_id(args.url)
+    logger.info(f"Processing video ID: {video_id}")
+    
     # Get API key from args or environment
     api_key = args.api_key or os.getenv('GEMINI_API_KEY')
     if not api_key:
@@ -49,13 +55,16 @@ def main():
         segment_paths = downloader.download(args.url, output_dir)
         logger.info(f"Downloaded {len(segment_paths)} segments successfully")
         
-        # Transcribe and diarize with specified format
-        transcriber = GeminiTranscriber(
-            api_key=api_key,
+        # Initialize provider and transcriber
+        provider = GeminiProvider(api_key=api_key)
+        transcriber = AudioTranscriber(
+            provider=provider,
             output_format=args.format
         )
+        
+        # Transcribe and diarize
         logger.info(f"Starting transcription and diarization in {args.format} format")
-        transcription_path = transcriber.transcribe(segment_paths, output_dir)
+        transcription_path = transcriber.transcribe(segment_paths, output_dir, video_id)
         logger.info(f"Transcription saved to: {transcription_path}")
         
     except Exception as e:

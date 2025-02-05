@@ -1,71 +1,71 @@
 import logging
-import google.generativeai as genai
 from pathlib import Path
-from typing import List, Dict
-import time
+from typing import List, BinaryIO
 import subprocess
+import io
 import tempfile
 from .formatters import get_formatter, JsonFormatter
+from providers.gemini import GeminiProvider
 
 logger = logging.getLogger(__name__)
 
-class GeminiTranscriber:
-    """Handles audio transcription and diarization using Gemini API"""
+class AudioTranscriber:
+    """Handles audio transcription and diarization"""
     
-    def __init__(self, api_key: str, max_retries: int = 3, output_format: str = 'txt'):
+    def __init__(self, provider: GeminiProvider, output_format: str = 'txt'):
         """
-        Initialize Gemini transcriber
+        Initialize transcriber
         
         Args:
-            api_key (str): Gemini API key
-            max_retries (int): Maximum number of retry attempts
+            provider: LLM provider for transcription
             output_format (str): Output format (txt or json)
         """
-        self.max_retries = max_retries
+        self.provider = provider
         self.formatter = get_formatter(output_format)
-        
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
-    def _combine_audio_segments(self, segment_paths: List[Path], output_dir: Path) -> Path:
+    def _combine_audio_segments(self, segment_paths: List[Path]) -> bytes:
         """
-        Combine multiple WAV segments into a single file using FFmpeg
+        Combine multiple WAV segments into a single in-memory buffer
         
         Args:
-            segment_paths (List[Path]): List of paths to audio segments
-            output_dir (Path): Directory to save combined file
+            segment_paths: List of paths to audio segments
             
         Returns:
-            Path: Path to combined audio file
+            bytes: Combined audio data
         """
         try:
-            # Create a temporary file listing all segments
+            # Create a temporary file listing segments
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
                 for path in sorted(segment_paths):
                     f.write(f"file '{path.absolute()}'\n")
                 concat_list = Path(f.name)
             
-            # Output path for combined audio
-            combined_path = output_dir / "combined_audio.wav"
-            
-            # FFmpeg command to concatenate WAV files
+            # Use FFmpeg to combine segments and output to pipe
             cmd = [
                 'ffmpeg', '-y',
                 '-f', 'concat',
                 '-safe', '0',
                 '-i', str(concat_list),
                 '-c', 'copy',
-                str(combined_path)
+                '-f', 'wav',
+                'pipe:1'  # Output to stdout
             ]
             
             logger.info("Combining audio segments...")
-            subprocess.run(cmd, check=True, capture_output=True)
+            process = subprocess.run(
+                cmd, 
+                check=True, 
+                capture_output=True
+            )
             
             # Clean up temporary file
             concat_list.unlink()
             
-            return combined_path
+            # Clean up input segments
+            for path in segment_paths:
+                path.unlink()
+            
+            return process.stdout
             
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg error combining segments: {e.stderr.decode()}")
@@ -74,79 +74,39 @@ class GeminiTranscriber:
             logger.error(f"Error combining audio segments: {str(e)}")
             raise
     
-    def _upload_to_gemini(self, file_path: Path, retry_count: int = 0) -> Dict:
+    def transcribe(self, segment_paths: List[Path], output_dir: Path, video_id: str) -> Path:
         """
-        Upload audio file to Gemini with retry logic
+        Transcribe and diarize audio segments
         
         Args:
-            file_path (Path): Path to audio file
-            retry_count (int): Current retry attempt
+            segment_paths: List of paths to audio segments
+            output_dir: Directory to save transcription
+            video_id: Unique identifier for the video
             
         Returns:
-            Dict: Gemini file response
+            Path to the transcription file
         """
         try:
-            with open(file_path, 'rb') as f:
-                return genai.upload_file(f, mime_type="audio/wav")
-        except Exception as e:
-            if retry_count < self.max_retries:
-                logger.warning(f"Retry {retry_count + 1} for {file_path}")
-                time.sleep(2 ** retry_count)  # Exponential backoff
-                return self._upload_to_gemini(file_path, retry_count + 1)
-            else:
-                logger.error(f"Failed to upload {file_path} after {self.max_retries} attempts")
-                raise
-    
-    def _process_audio(self, file_path: Path) -> str:
-        """Process audio file with Gemini"""
-        try:
-            # Upload file to Gemini
-            file = self._upload_to_gemini(file_path)
-            
-            # Get format-specific prompt
-            prompt = self.formatter.get_prompt()
-            
-            # Create chat session with context
-            chat = self.model.start_chat(history=[{
-                "role": "user",
-                "parts": [file, prompt]
-            }])
-            
-            # Get transcription
-            response = chat.send_message(
-                "Process the audio and format the output as specified. "
-                "Ensure accurate speaker identification and timestamp precision."
-            )
-            
-            # Format the response
-            return self.formatter.format_output(response.text)
-            
-        except Exception as e:
-            logger.error(f"Error processing audio {file_path}: {str(e)}")
-            raise
-    
-    def transcribe(self, segment_paths: List[Path], output_dir: Path) -> Path:
-        """Transcribe and diarize audio segments"""
-        try:
-            # Combine all segments into one file
-            combined_audio = self._combine_audio_segments(segment_paths, output_dir)
+            # Combine segments into memory
+            audio_data = self._combine_audio_segments(segment_paths)
             logger.info("Audio segments combined successfully")
             
-            # Process the combined audio
-            logger.info("Starting transcription of combined audio")
-            transcription = self._process_audio(combined_audio)
+            # Get transcription from provider
+            logger.info(f"Starting transcription using {self.provider.name} {self.provider.version}")
+            transcription = self.provider.transcribe_bytes(audio_data, self.formatter.get_prompt())
             
-            # Save transcription with appropriate extension
+            if not transcription:
+                raise ValueError("Transcription failed")
+            
+            # Format and save transcription
+            formatted_text = self.formatter.format_output(transcription)
             extension = 'json' if isinstance(self.formatter, JsonFormatter) else 'txt'
-            output_path = output_dir / f"transcription.{extension}"
+            output_path = output_dir / f"{video_id}.{extension}"
             
             with open(output_path, "w", encoding="utf-8") as f:
-                f.write(transcription)
+                f.write(formatted_text)
             
             logger.info(f"Transcription completed and saved to {output_path}")
-            
-            # Clean up combined audio file
-            combined_audio.unlink()
             
             return output_path
             

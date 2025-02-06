@@ -30,6 +30,17 @@ A Python-based CLI tool that processes videos from various social media platform
   - Robust error handling and retries
   - Memory-optimized audio handling
 
+- **X (formerly Twitter) Data Collection**:
+  - Environment-based configuration
+  - Secure credential management
+  - Cookie-based session handling
+  - Automatic authentication
+  - Complete tweet history download
+  - Rich tweet metadata
+  - Media URL extraction
+  - Progress tracking
+  - More features coming soon...
+
 ## Prerequisites
 
 - Python 3.8 or higher
@@ -45,6 +56,11 @@ A Python-based CLI tool that processes videos from various social media platform
   choco install ffmpeg
   ```
 - Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+
+For X functionality:
+- X account credentials
+- Python 3.8 or higher
+- Required Python packages (see requirements.txt)
 
 ## Installation
 
@@ -65,6 +81,23 @@ pip install -r requirements.txt
 export GEMINI_API_KEY="your-api-key"
 
 # Option 2: Provide via command line argument
+```
+
+## Configuration
+
+### X Credentials
+
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Edit .env with your X credentials:
+```bash
+# X (formerly Twitter) Credentials
+X_USERNAME=your_username
+X_EMAIL=your_email@example.com
+X_PASSWORD=your_password
 ```
 
 ## Usage
@@ -97,6 +130,88 @@ python process_video.py \
 - `--segment_duration`: Duration of each segment in minutes (default: 5)
 - `--max_concurrent`: Maximum number of concurrent downloads (default: 4)
 - `--api_key`: Gemini API key (optional if set via environment variable)
+
+### X Data Collection
+
+Basic usage:
+```bash
+python scrape_x.py --output_dir "x_data"
+```
+
+Download tweets from a user:
+```bash
+python scrape_x.py \
+    --output_dir "x_data" \
+    --username "example_user"
+```
+
+Download with limits:
+```bash
+python scrape_x.py \
+    --output_dir "x_data" \
+    --username "example_user" \
+    --max_tweets 1000 \
+    --since_date "2024-01-01"
+```
+
+With custom cookies path:
+```bash
+python scrape_x.py \
+    --output_dir "x_data" \
+    --cookies_path "custom_cookies.json" \
+    --username "example_user"
+```
+
+### Arguments for X Scraper
+
+- `--output_dir`: Output directory for downloaded data (default: "output")
+- `--cookies_path`: Path to save/load cookies (optional)
+- `--username`: X username to download tweets from (without @ symbol)
+- `--max_tweets`: Maximum number of tweets to download (default: all)
+- `--since_date`: Only get tweets after this date (format: YYYY-MM-DD)
+
+### X Output Format
+
+Tweets are saved in JSON format with rich metadata:
+```json
+{
+  "user": {
+    "id": "123456789",
+    "username": "example_user",
+    "name": "Example Name",
+    "description": "User bio",
+    "followers": 1000,
+    "following": 500,
+    "tweets": 5000,
+    "joined": "2020-01-01T00:00:00Z"
+  },
+  "tweets": [
+    {
+      "id": "987654321",
+      "created_at": "2023-01-01T12:00:00Z",
+      "text": "Example tweet text",
+      "likes": 42,
+      "retweets": 7,
+      "replies": 3,
+      "is_retweet": false,
+      "is_reply": false,
+      "language": "en",
+      "urls": ["https://example.com"],
+      "media": [
+        {
+          "type": "photo",
+          "url": "https://example.com/image.jpg",
+          "preview_url": "https://example.com/preview.jpg"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "downloaded_at": "2024-02-05T12:00:00Z",
+    "tweet_count": 1000
+  }
+}
+```
 
 ## Output Formats
 

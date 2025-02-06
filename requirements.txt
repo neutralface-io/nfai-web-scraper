@@ -15,3 +15,7 @@ concurrent-log-handler>=0.9.24  # Thread-safe logging
 
 # Optional dependencies
 tqdm>=4.66.1              # Progress bars (optional)
+
+# X (formerly Twitter) scraping
+twikit>=2.3.0
+python-dotenv==1.0.0

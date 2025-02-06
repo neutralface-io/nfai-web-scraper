@@ -4,3 +4,4 @@ config.py
 .env
 instructions
 output
+x_cookies.json

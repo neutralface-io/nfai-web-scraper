@@ -23,6 +23,8 @@ def parse_arguments():
                        help='Maximum number of tweets to download (default: all)')
     parser.add_argument('--since_date', type=str,
                        help='Only get tweets after this date (format: YYYY-MM-DD)')
+    parser.add_argument('--requests_per_second', type=float, default=10.0,
+                       help='Maximum number of requests per second (default: 10)')
     return parser.parse_args()
 
 async def main():
@@ -34,7 +36,10 @@ async def main():
     
     # Initialize scraper
     cookies_path = Path(args.cookies_path) if args.cookies_path else None
-    scraper = XScraper(cookies_path=cookies_path, requests_per_second=20)
+    scraper = XScraper(
+        cookies_path=cookies_path,
+        requests_per_second=args.requests_per_second
+    )
     
     try:
         # Download tweets if username provided

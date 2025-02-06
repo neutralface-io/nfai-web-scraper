@@ -169,12 +169,13 @@ python scrape_x.py \
 - `--username`: X username to download tweets from (without @ symbol)
 - `--max_tweets`: Maximum number of tweets to download (default: all)
 - `--since_date`: Only get tweets after this date (format: YYYY-MM-DD)
+- `--requests_per_second`: Maximum number of requests per second (default: 10)
 
 ### Rate Limiting
 
 The scraper includes built-in rate limiting to prevent API throttling:
 
-- Default rate: 0.5 requests per second (1 request every 2 seconds)
+- Default rate: 10 requests per second
 - Configurable burst limit (default: 3 requests)
 - Automatic retry on rate limit errors
 - Respects Twitter's rate limit headers

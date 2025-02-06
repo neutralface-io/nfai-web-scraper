@@ -145,6 +145,7 @@ class XScraper:
                     
                     while user_tweets:
                         tweets_added_in_batch = 0
+                        reached_date_limit_in_batch = False
                         
                         # Process tweets in this batch
                         for tweet in user_tweets:
@@ -168,10 +169,11 @@ class XScraper:
                                     
                                     # Check if we've reached tweets older than since_date
                                     if since_timestamp and tweet_date.date() < since_timestamp.date():
-                                        logger.info(
-                                            f"Reached date threshold {since_date}, stopping collection"
+                                        logger.debug(
+                                            f"Found tweet from {tweet_date.date()} "
+                                            f"(before {since_timestamp.date()}), skipping batch"
                                         )
-                                        reached_date_limit = True
+                                        reached_date_limit_in_batch = True
                                         break
                                     
                                     formatted_date = tweet_date.isoformat()
@@ -212,7 +214,7 @@ class XScraper:
                                         tweet_data['media'].append(media_data)
                                 
                                 tweets.append(tweet_data)
-                                seen_tweet_ids.add(tweet.id)  # Add ID to seen set
+                                seen_tweet_ids.add(tweet.id)
                                 tweets_added_in_batch += 1
                                 
                             except Exception as e:
@@ -223,9 +225,7 @@ class XScraper:
                         
                         # Break conditions
                         if max_tweets and len(tweets) >= max_tweets:
-                            break
-                        
-                        if reached_date_limit:
+                            reached_date_limit = True
                             break
                         
                         # Log batch progress
@@ -234,25 +234,32 @@ class XScraper:
                             f"(+{tweets_added_in_batch} in this batch)"
                         )
                         
-                        # Get next batch of tweets with rate limiting
+                        if reached_date_limit_in_batch and tweets_added_in_batch == 0:
+                            # If we found no new tweets in this batch and hit the date limit,
+                            # we can stop fetching
+                            logger.info(f"Reached date threshold {since_date}, stopping collection")
+                            reached_date_limit = True
+                            break
+                        
+                        # Get next batch of tweets
                         try:
                             await self.rate_limiter.acquire()
                             user_tweets = await user_tweets.next()
                         except TooManyRequests as e:
-                            logger.warning(f"Rate limit hit: {str(e)}")
                             retry_count += 1
                             if retry_count >= max_retries:
                                 raise
                             wait_time = float(e.headers.get('x-rate-limit-reset', retry_delay))
-                            logger.info(f"Waiting {wait_time} seconds before retrying...")
+                            logger.info(f"Rate limit hit, waiting {wait_time} seconds before retry {retry_count}/{max_retries}")
                             await asyncio.sleep(wait_time)
-                            continue
                         except Exception as e:
                             logger.debug(f"No more tweets available: {str(e)}")
                             break
                         
-                        # Add a small delay between batches
                         await asyncio.sleep(0.5)
+                    
+                    if reached_date_limit:
+                        break
                     
                     # If we get here, we've successfully completed
                     break

@@ -170,6 +170,26 @@ python scrape_x.py \
 - `--max_tweets`: Maximum number of tweets to download (default: all)
 - `--since_date`: Only get tweets after this date (format: YYYY-MM-DD)
 
+### Rate Limiting
+
+The scraper includes built-in rate limiting to prevent API throttling:
+
+- Default rate: 0.5 requests per second (1 request every 2 seconds)
+- Configurable burst limit (default: 3 requests)
+- Automatic retry on rate limit errors
+- Respects Twitter's rate limit headers
+- Exponential backoff for retries
+
+You can configure the rate limiter when initializing the scraper:
+
+```python
+scraper = XScraper(
+    requests_per_second=0.5,  # Adjust request rate
+    burst_limit=3,           # Maximum burst size
+    cookies_path="cookies.json"
+)
+```
+
 ### X Output Format
 
 Tweets are saved in JSON format with rich metadata:

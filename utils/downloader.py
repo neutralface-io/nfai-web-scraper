@@ -48,14 +48,23 @@ class VideoDownloader:
         
         Args:
             url (str): URL to download from
-            output_dir (Path): Directory to save the audio segments
+            output_dir (Path): Directory to save the audio segments (video-specific)
             
         Returns:
             List[Path]: Paths to the downloaded audio segment files
         """
         try:
+            # Create segments directory within video directory
+            segments_dir = output_dir / 'segments'
+            segments_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Download using appropriate scraper
             scraper = self._get_scraper(url)
-            return scraper.download(url, output_dir)
+            segment_paths = scraper.download(url, segments_dir)
+            
+            logger.info(f"Downloaded {len(segment_paths)} segments to {segments_dir}")
+            return segment_paths
+            
         except Exception as e:
             logger.error(f"Download failed: {str(e)}")
             raise 

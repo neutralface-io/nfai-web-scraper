@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BaseFormatter(ABC):
     """Base class for output formatters"""
@@ -15,13 +18,30 @@ class BaseFormatter(ABC):
         """Format the transcription output"""
         pass
 
+    def parse_transcription(self, text: str) -> List[Dict]:
+        """Parse transcription text into segments"""
+        segments = []
+        for line in text.strip().split('\n'):
+            if not line:
+                continue
+            try:
+                timestamp, speaker, text = line.split(';', 2)
+                segments.append({
+                    'timestamp': timestamp,
+                    'speaker': speaker,
+                    'text': text.strip()
+                })
+            except ValueError:
+                logger.warning(f"Skipping malformed line: {line}")
+        return segments
+
 class TextFormatter(BaseFormatter):
     """Format output as semicolon-delimited text with HH:MM:SS.mmm timestamps"""
     
     def get_prompt(self) -> str:
         return (
             "Generate audio diarization with transcriptions and speaker information. "
-            "Format each line as: <timestamp>;<speaker_name>;<transcription>\n"
+            "Format each line as: <timestamp>;<speaker_name>;<transcription>\n" 
             "Timestamps must be in HH:MM:SS.mmm format (e.g., 00:01:23.456). "
             "Hours, minutes, and seconds should increment properly (e.g., 01:00:00.000 for 1 hour). "
             "Output should be compact with no blank lines between entries.\n"
@@ -74,4 +94,4 @@ def get_formatter(format_type: str) -> BaseFormatter:
         'txt': TextFormatter(),
         'json': JsonFormatter()
     }
-    return formatters.get(format_type.lower(), TextFormatter()) 
+    return formatters.get(format_type.lower(), JsonFormatter())  # Default to JSON instead of Text 

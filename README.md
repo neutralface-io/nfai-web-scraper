@@ -106,7 +106,11 @@ X_PASSWORD=your_password
 
 Process a video with default settings (TXT format):
 ```bash
+# Process video with default JSON output
 python process_video.py --url "https://youtube.com/watch?v=example"
+
+# Specify TXT output format
+python process_video.py --url "https://youtube.com/watch?v=example" --format txt
 ```
 
 ### Advanced Usage
@@ -118,7 +122,6 @@ python process_video.py \
     --output_dir "custom_output" \
     --segment_duration 10 \
     --max_concurrent 6 \
-    --format json \
     --api_key "your-gemini-api-key"
 ```
 
@@ -126,7 +129,7 @@ python process_video.py \
 
 - `--url`: Video URL (required)
 - `--output_dir`: Output directory (default: "output")
-- `--format`: Output format (json/txt, default: txt)
+- `--format`: Output format (json/txt, default: json)
 - `--segment_duration`: Duration of each segment in minutes (default: 5)
 - `--max_concurrent`: Maximum number of concurrent downloads (default: 4)
 - `--api_key`: Gemini API key (optional if set via environment variable)
@@ -236,7 +239,7 @@ Tweets are saved in JSON format with rich metadata:
 
 ## Output Formats
 
-### Text Format (Default)
+### Text Format
 Semicolon-delimited format with precise timestamps:
 ```
 00:00:00.000;Speaker 1;Hello, welcome to the video.
@@ -244,7 +247,7 @@ Semicolon-delimited format with precise timestamps:
 00:00:07.200;Speaker 1;Let's discuss the topic.
 ```
 
-### JSON Format
+### JSON Format (Default)
 Structured format with precise timestamps:
 ```json
 {
@@ -252,15 +255,30 @@ Structured format with precise timestamps:
     {
       "timestamp": "00:00:00.000",
       "speaker": "Speaker 1",
-      "transcription": "Hello, welcome to the video."
+      "text": "Hello, welcome to the video."
     },
     {
       "timestamp": "00:00:03.450",
       "speaker": "Speaker 2",
-      "transcription": "Thanks for having me here."
+      "text": "Thanks for having me here."
     }
-  ]
+  ],
+  "speaker_clips": {
+    "Speaker 1": "speaker_clips/speaker_1.wav",
+    "Speaker 2": "speaker_clips/speaker_2.wav"
+  }
 }
+```
+
+## Output Structure
+```
+output/
+├── video_id/
+│   ├── speaker_clips/      # Speaker-specific audio clips
+│   │   ├── speaker_1.wav
+│   │   └── speaker_2.wav
+│   ├── video_id_processed.wav  # Combined audio file
+│   └── video_id.json          # Transcription output (or .txt)
 ```
 
 ## Supported URLs

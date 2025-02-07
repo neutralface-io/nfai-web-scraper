@@ -6,22 +6,27 @@ import io
 import tempfile
 from .formatters import get_formatter, JsonFormatter
 from providers.gemini import GeminiProvider
+from utils.speaker_clipper import SpeakerClipper
+import json
 
 logger = logging.getLogger(__name__)
 
 class AudioTranscriber:
     """Handles audio transcription and diarization"""
     
-    def __init__(self, provider: GeminiProvider, output_format: str = 'txt'):
+    def __init__(self, provider: GeminiProvider, output_format: str = 'json', clip_duration: int = 30):
         """
         Initialize transcriber
         
         Args:
             provider: LLM provider for transcription
-            output_format (str): Output format (txt or json)
+            output_format (str): Output format (json or txt, default: json)
+            clip_duration: Duration of clips in seconds
         """
         self.provider = provider
         self.formatter = get_formatter(output_format)
+        self.clip_duration = clip_duration
+        self.speaker_clipper = SpeakerClipper(clip_duration=clip_duration)
     
     def _combine_audio_segments(self, segment_paths: List[Path]) -> bytes:
         """
@@ -63,10 +68,16 @@ class AudioTranscriber:
             
             logger.info(f"Combined audio size: {len(process.stdout) / (1024*1024):.2f} MB")
             
-            # Clean up
+            # Clean up concat list and segments
             concat_list.unlink()
             for path in segment_paths:
                 path.unlink()
+            
+            # Clean up segments directory if empty
+            segments_dir = path.parent
+            if not any(segments_dir.iterdir()):
+                segments_dir.rmdir()
+                logger.info("Removed empty segments directory")
             
             return process.stdout
             
@@ -83,7 +94,7 @@ class AudioTranscriber:
         
         Args:
             segment_paths: List of paths to audio segments
-            output_dir: Directory to save transcription
+            output_dir: Video-specific directory for outputs
             video_id: Unique identifier for the video
             
         Returns:
@@ -94,23 +105,49 @@ class AudioTranscriber:
             audio_data = self._combine_audio_segments(segment_paths)
             logger.info("Audio segments combined successfully")
             
-            # Get transcription from provider
-            logger.info(f"Starting transcription using {self.provider.name} {self.provider.version}")
-            transcription = self.provider.transcribe_bytes(audio_data, self.formatter.get_prompt())
+            # Create processed audio file in video directory
+            processed_audio = output_dir / f"{video_id}_processed.wav"
+            with open(processed_audio, 'wb') as f:
+                f.write(audio_data)
             
-            if not transcription:
+            # Get transcription from provider
+            logger.info(f"Starting transcription using {self.provider.name}")
+            result = self.provider.transcribe(processed_audio, self.formatter.get_prompt())
+            if not result:
                 raise ValueError("Transcription failed")
             
-            # Format and save transcription
-            formatted_text = self.formatter.format_output(transcription)
-            extension = 'json' if isinstance(self.formatter, JsonFormatter) else 'txt'
-            output_path = output_dir / f"{video_id}.{extension}"
+            # Parse transcription result
+            segments = self.formatter.parse_transcription(result)
             
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(formatted_text)
+            # Extract speaker clips
+            logger.info("Extracting speaker clips...")
+            speaker_clips = self.speaker_clipper.extract_speaker_clips(
+                processed_audio,
+                segments,
+                output_dir
+            )
+            logger.info(f"Extracted {len(speaker_clips)} speaker clips")
             
-            logger.info(f"Transcription completed and saved to {output_path}")
+            # Save output based on format
+            if isinstance(self.formatter, JsonFormatter):
+                # JSON format
+                output_path = output_dir / f"{video_id}.json"
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        'segments': segments,
+                        'speaker_clips': {
+                            speaker: str(path.relative_to(output_dir))
+                            for speaker, path in speaker_clips.items()
+                        }
+                    }, f, indent=2)
+            else:
+                # Text format
+                output_path = output_dir / f"{video_id}.txt"
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    for segment in segments:
+                        f.write(f"{segment['timestamp']};{segment['speaker']};{segment['text']}\n")
             
+            logger.info(f"Transcription saved to: {output_path}")
             return output_path
             
         except Exception as e:
